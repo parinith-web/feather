@@ -4,6 +4,7 @@ const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  emailVerified: { type: Boolean, default: false },
   plan: { type: String, default: "Free" },
   credits: { type: Number, default: 5 }, // users start with 5 welcome credits/images
   apiKey: { type: String, unique: true, sparse: true },
@@ -34,8 +35,20 @@ const UsageSchema = new mongoose.Schema({
   imagesProcessed: { type: Number, default: 0 },
 });
 
+const PendingSignupSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  passwordHash: { type: String, required: true },
+  otpHash: { type: String, required: true },
+  attempts: { type: Number, default: 0 },
+  lastSentAt: { type: Date, default: Date.now },
+  expiresAt: { type: Date, required: true, index: { expires: 0 } },
+  createdDate: { type: Date, default: Date.now },
+});
+
 // Avoid re-compilation in development HMR if applicable
 export const User = mongoose.models.User || mongoose.model("User", UserSchema);
 export const Image = mongoose.models.Image || mongoose.model("Image", ImageSchema);
 export const Transaction = mongoose.models.Transaction || mongoose.model("Transaction", TransactionSchema);
 export const Usage = mongoose.models.Usage || mongoose.model("Usage", UsageSchema);
+export const PendingSignup = mongoose.models.PendingSignup || mongoose.model("PendingSignup", PendingSignupSchema);

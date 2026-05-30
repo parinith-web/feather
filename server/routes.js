@@ -8,13 +8,16 @@ import crypto from "crypto";
 import axios from "axios";
 import FormData from "form-data";
 import mongoose from "mongoose";
-import { User, Image, Transaction, Usage } from "./models.js";
+import { User, Image, Transaction, Usage, PendingSignup } from "./models.js";
 import { requireAuth } from "./auth.js";
 
 
 
 const router = express.Router();
 const isProduction = process.env.NODE_ENV === "production";
+const OTP_EXPIRY_MINUTES = 10;
+const OTP_MAX_ATTEMPTS = 5;
+const OTP_RESEND_COOLDOWN_SECONDS = 60;
 
 // Middleware to prevent hanging operations when MongoDB is offline
 const checkDbConnection = (req, res, next) => {
@@ -70,6 +73,79 @@ const createServiceError = (message, statusCode = 503) => {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
+};
+
+const normalizeEmail = (email) => email.trim().toLowerCase();
+
+const createAuthToken = (userId) => {
+  return jwt.sign(
+    { userId },
+    process.env.JWT_SECRET || "fallback_secret_key",
+    { expiresIn: "30d" }
+  );
+};
+
+const serializeUser = (user) => ({
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  plan: user.plan,
+  credits: user.credits,
+});
+
+const generateOtp = () => String(crypto.randomInt(100000, 1000000));
+
+const getOtpExpiry = () => new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  "\"": "&quot;",
+  "'": "&#039;",
+}[char]));
+
+const sendSignupOtpEmail = async ({ email, name, otp }) => {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM || "PurePixels <onboarding@resend.dev>";
+  const safeName = escapeHtml(name);
+
+  if (!apiKey) {
+    if (isProduction) {
+      throw createServiceError("Email verification service is not configured.", 503);
+    }
+
+    console.log(`[Signup OTP] ${email}: ${otp}`);
+    return;
+  }
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: email,
+      subject: "Verify your PurePixels email",
+      text: `Hi ${name}, your PurePixels verification code is ${otp}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #0f172a;">
+          <h2>Verify your PurePixels email</h2>
+          <p>Hi ${safeName},</p>
+          <p>Use this code to finish creating your account:</p>
+          <p style="font-size: 28px; font-weight: 700; letter-spacing: 6px;">${otp}</p>
+          <p>This code expires in ${OTP_EXPIRY_MINUTES} minutes.</p>
+        </div>
+      `,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw createServiceError(`Failed to send verification email: ${errorText}`, 502);
+  }
 };
 
 const removeBackgroundWithClipdrop = async (imageBuffer, mimetype) => {
@@ -135,8 +211,8 @@ const removeBackgroundBuffer = async (imageBuffer, mimetype) => {
 
 // ==================== AUTH ROUTES ====================
 
-// SIGNUP
-router.post("/auth/signup", async (req, res) => {
+// START SIGNUP: validate details and email an OTP
+router.post("/auth/signup/start", async (req, res) => {
   try {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
@@ -147,7 +223,7 @@ router.post("/auth/signup", async (req, res) => {
       return res.status(400).json({ message: "Invalid request payload format" });
     }
 
-    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedEmail = normalizeEmail(email);
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
       return res.status(400).json({ message: "Please provide a valid email address" });
@@ -162,36 +238,148 @@ router.post("/auth/signup", async (req, res) => {
       return res.status(400).json({ message: "Account with this email already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({
-      name: name.trim(),
+    const otp = generateOtp();
+    const [passwordHash, otpHash] = await Promise.all([
+      bcrypt.hash(password, 10),
+      bcrypt.hash(otp, 10),
+    ]);
+
+    await PendingSignup.findOneAndUpdate(
+      { email: trimmedEmail },
+      {
+        name: name.trim(),
+        email: trimmedEmail,
+        passwordHash,
+        otpHash,
+        attempts: 0,
+        lastSentAt: new Date(),
+        expiresAt: getOtpExpiry(),
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    try {
+      await sendSignupOtpEmail({ email: trimmedEmail, name: name.trim(), otp });
+    } catch (emailError) {
+      await PendingSignup.deleteOne({ email: trimmedEmail });
+      throw emailError;
+    }
+
+    res.json({
+      message: "Verification code sent to your email.",
       email: trimmedEmail,
-      password: hashedPassword,
+      expiresInMinutes: OTP_EXPIRY_MINUTES,
+    });
+  } catch (error) {
+    console.error("Signup start error:", error);
+    res.status(error.statusCode || 500).json({ message: error.message || "Internal server error" });
+  }
+});
+
+// VERIFY SIGNUP OTP: create the account and sign the user in
+router.post("/auth/signup/verify", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and verification code are required" });
+    }
+
+    if (typeof email !== "string" || typeof otp !== "string") {
+      return res.status(400).json({ message: "Invalid request payload format" });
+    }
+
+    const trimmedEmail = normalizeEmail(email);
+    const trimmedOtp = otp.trim();
+    if (!/^\d{6}$/.test(trimmedOtp)) {
+      return res.status(400).json({ message: "Please enter the 6-digit verification code" });
+    }
+
+    const pendingSignup = await PendingSignup.findOne({ email: trimmedEmail });
+    if (!pendingSignup || pendingSignup.expiresAt.getTime() < Date.now()) {
+      await PendingSignup.deleteOne({ email: trimmedEmail });
+      return res.status(400).json({ message: "Verification code expired. Please request a new code." });
+    }
+
+    if (pendingSignup.attempts >= OTP_MAX_ATTEMPTS) {
+      await PendingSignup.deleteOne({ email: trimmedEmail });
+      return res.status(400).json({ message: "Too many incorrect attempts. Please sign up again." });
+    }
+
+    const isMatch = await bcrypt.compare(trimmedOtp, pendingSignup.otpHash);
+    if (!isMatch) {
+      pendingSignup.attempts += 1;
+      await pendingSignup.save();
+      return res.status(400).json({
+        message: `Invalid verification code. ${OTP_MAX_ATTEMPTS - pendingSignup.attempts} attempts remaining.`,
+      });
+    }
+
+    const existingUser = await User.findOne({ email: trimmedEmail });
+    if (existingUser) {
+      await PendingSignup.deleteOne({ email: trimmedEmail });
+      return res.status(400).json({ message: "Account with this email already exists" });
+    }
+
+    const newUser = new User({
+      name: pendingSignup.name,
+      email: pendingSignup.email,
+      password: pendingSignup.passwordHash,
+      emailVerified: true,
       plan: "Free",
-      credits: 5, // 5 welcome credits for background remover testing
+      credits: 5,
     });
 
     await newUser.save();
-
-    const token = jwt.sign(
-      { userId: newUser._id },
-      process.env.JWT_SECRET || "fallback_secret_key",
-      { expiresIn: "30d" }
-    );
+    await PendingSignup.deleteOne({ email: trimmedEmail });
+    const token = createAuthToken(newUser._id);
 
     res.status(201).json({
       token,
-      user: {
-        id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        plan: newUser.plan,
-        credits: newUser.credits,
-      },
+      user: serializeUser(newUser),
     });
   } catch (error) {
-    console.error("Signup error:", error);
+    console.error("Signup verify error:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// RESEND SIGNUP OTP
+router.post("/auth/signup/resend", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const trimmedEmail = normalizeEmail(email);
+    const pendingSignup = await PendingSignup.findOne({ email: trimmedEmail });
+    if (!pendingSignup) {
+      return res.status(400).json({ message: "No pending signup found. Please start again." });
+    }
+
+    const secondsSinceLastSend = (Date.now() - pendingSignup.lastSentAt.getTime()) / 1000;
+    if (secondsSinceLastSend < OTP_RESEND_COOLDOWN_SECONDS) {
+      return res.status(429).json({
+        message: `Please wait ${Math.ceil(OTP_RESEND_COOLDOWN_SECONDS - secondsSinceLastSend)} seconds before requesting another code.`,
+      });
+    }
+
+    const otp = generateOtp();
+    pendingSignup.otpHash = await bcrypt.hash(otp, 10);
+    pendingSignup.attempts = 0;
+    pendingSignup.lastSentAt = new Date();
+    pendingSignup.expiresAt = getOtpExpiry();
+    await pendingSignup.save();
+
+    await sendSignupOtpEmail({ email: trimmedEmail, name: pendingSignup.name, otp });
+
+    res.json({
+      message: "A new verification code has been sent.",
+      expiresInMinutes: OTP_EXPIRY_MINUTES,
+    });
+  } catch (error) {
+    console.error("Signup resend error:", error);
+    res.status(error.statusCode || 500).json({ message: error.message || "Internal server error" });
   }
 });
 
@@ -218,21 +406,11 @@ router.post("/auth/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET || "fallback_secret_key",
-      { expiresIn: "30d" }
-    );
+    const token = createAuthToken(user._id);
 
     res.json({
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        plan: user.plan,
-        credits: user.credits,
-      },
+      user: serializeUser(user),
     });
   } catch (error) {
     console.error("Login error:", error);

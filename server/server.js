@@ -34,7 +34,8 @@ const requiredProductionEnv = [
   "CLOUDINARY_API_SECRET",
   "RAZORPAY_KEY_ID",
   "RAZORPAY_KEY_SECRET",
-
+  "RESEND_API_KEY",
+  "EMAIL_FROM",
 ];
 
 const missingProductionEnv = requiredProductionEnv.filter((key) => !process.env[key]);
