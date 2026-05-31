@@ -58,7 +58,7 @@ Discover a premium, interactive homepage with step-by-step guides, features grid
 
 ---
 
-### 2. High-Performance Dashboard & Interactive Comparison Slider
+### 2. Login verification & Interactive Comparison Slider
 Upload any PNG/JPEG image (up to 10MB) and watch as the background removal engine isolates the subject. Slide between the original and the processed image to check edge precision.
 
 <p align="center">
@@ -69,7 +69,7 @@ Upload any PNG/JPEG image (up to 10MB) and watch as the background removal engin
 
 ---
 
-### 3. Developer Documentation & API Key Management
+### 3. High-Performance Dashboard  & Payment Gateway
 PurePixels empowers developers by offering custom integration scripts, structured REST requests, and instant API Key rotation.
 
 <p align="center">
@@ -152,71 +152,8 @@ graph TB
     class Server,CORS,Multer,AuthMiddleware,ApiKeyMiddleware gatewayClass;
     class Clipdrop,Cloudinary,Resend,Razorpay serviceClass;
     class Mongoose,MongoDB dbClass;
+
 ```
-
----
-
-### 🔄 Background Removal Transaction Lifecycle
-Here is the sequence of events showing how a background removal request is parsed, authenticated, verified against credit quotas, sent to the ML segmentation engine, and persisted:
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Developer as Developer / User Client
-    participant API as API Gateway (routes.js)
-    participant Auth as Auth Middleware
-    participant Cloudinary as Cloudinary CDN
-    participant Clipdrop as Clipdrop AI Service
-    participant DB as MongoDB (Mongoose)
-
-    Developer->>API: POST /api/images/process (with Image file + Auth header)
-    activate API
-    API->>Auth: Verify JWT / API Key (`requireAuth` or `requireApiKey`)
-    activate Auth
-    alt Token Invalid
-        Auth-->>Developer: Return 401 Unauthorized
-    else Token Valid
-        Auth-->>API: Return User Session Metadata (Plan, Credits)
-    end
-    deactivate Auth
-
-    API->>DB: Check credit quota
-    activate DB
-    DB-->>API: User plan = "Free" (processedToday < 5) OR Pro (credits > 0)
-    deactivate DB
-
-    alt Quota Exhausted
-        API-->>Developer: Return 400 Bad Request (Limit Reached)
-    end
-
-    %% Cloudinary Original Upload
-    API->>Cloudinary: Upload original image (Base64 original buffer)
-    activate Cloudinary
-    Cloudinary-->>API: Return secure_url (Original Image URL)
-    deactivate Cloudinary
-
-    %% Background Removal Request
-    API->>Clipdrop: Forward original buffer to remove-background API (multipart)
-    activate Clipdrop
-    Clipdrop-->>API: Return isolated PNG buffer (binary stream)
-    deactivate Clipdrop
-
-    %% Cloudinary Processed Upload
-    API->>Cloudinary: Upload processed buffer (Base64 processed)
-    activate Cloudinary
-    Cloudinary-->>API: Return secure_url (Processed Image URL)
-    deactivate Cloudinary
-
-    %% Database updates
-    API->>DB: Deduct 1 credit OR increment processedToday counter
-    activate DB
-    DB-->>API: Confirmation (Save metadata to Image history)
-    deactivate DB
-
-    API-->>Developer: Return processed URL & remaining credits (JSON / File stream)
-    deactivate API
-```
-
 ---
 
 ## 🛠️ Tech Stack
@@ -393,7 +330,3 @@ purepixels/
 └── README.md               # Documentation & Setup Reference (this file)
 ```
 
----
-
-## 📜 License
-This project is licensed under the [MIT License](LICENSE). Feel free to customize and extend it as you see fit!
