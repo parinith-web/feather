@@ -80,69 +80,140 @@ PurePixels empowers developers by offering custom integration scripts, structure
 
 ## ⚙️ System Architecture
 
-The blueprint below represents the modular layout of PurePixels' full-stack execution, illustrating the Client Subsystem, API Gateway layer, Mongoose Model Storage layer, and Cloud Integration Engine:
+PurePixels is architected around a decoupled **Stateless Client-API pattern** configured to process intensive machine learning operations asynchronously while managing transactional state safely.
+
+### 🏛️ Layered Component Blueprint
+The block diagram below maps the boundary interactions of client interfaces, REST controllers, Mongoose schemas, and third-party integrations:
 
 ```mermaid
 graph TB
-    %% Core Subgraph Groups
-    subgraph ClientLayer ["🖥️ Client Subsystem (Vite / React 18 / Tailwind)"]
-        LandingPage["Landing Page<br/>(Hero / Features / FAQ)"]
-        Dashboard["Interactive Dashboard<br/>(Uploads / Comparison Slider)"]
-        DevPortal["Developer Portal<br/>(API Docs / Key Rotation)"]
-        PricingPage["Billing & Packages<br/>(Razorpay Checkout)"]
+    %% Subgraphs representing different architectural bounds
+    subgraph ClientSub ["Client Layer (React Single Page App)"]
+        SPA["React 18 Single Page App<br/>(Vite / TypeScript)"]
+        Routing["React Router DOM v6<br/>(Protected Dash & Auth Routes)"]
+        State["TanStack Query (React Query)<br/>(Server State caching)"]
+        CompareUI["Interactive UI Slider<br/>(Contrast Comparison)"]
     end
 
-    subgraph ServerLayer ["⚙️ API Gateways & Middleware (Express.js)"]
-        APIRouter["Express API Router<br/>(/api)"]
-        AuthMiddleware["requireAuth Middleware<br/>(JWT Validate)"]
-        ApiKeyMiddleware["requireApiKey Middleware<br/>(Developer Access)"]
-        UploadHandler["Multer Middleware<br/>(Multipart Form-Data Handler)"]
+    subgraph APIGateway ["API Gateway Layer (Express.js Server)"]
+        Server["Node.js HTTP Server<br/>(Express Core)"]
+        CORS["CORS Policy Middleware<br/>(Origin Verification)"]
+        Multer["Multer File Uploader<br/>(In-Memory Buffer Parsing)"]
+        AuthMiddleware["JWT Validation Middleware<br/>(requireAuth)"]
+        ApiKeyMiddleware["API Key Validation Middleware<br/>(requireApiKey)"]
     end
 
-    subgraph ServiceLayer ["🛡️ Microservice Integration Engine"]
-        ClipdropAI["Clipdrop AI API<br/>(AI-Powered Segmentation)"]
-        CloudinaryCDN["Cloudinary Media CDN<br/>(Asset Hosting & Storage)"]
-        ResendSMTP["Resend Email API<br/>(Transactional OTP Onboarding)"]
-        RazorpaySDK["Razorpay Service<br/>(Payment Validation & Capture)"]
+    subgraph ServiceIntegrations ["Third-Party Service Engine"]
+        Clipdrop["Clipdrop API<br/>(Background Segmentation AI)"]
+        Cloudinary["Cloudinary CDN<br/>(Image Asset Hosting)"]
+        Resend["Resend SMTP API<br/>(Transactional OTP Emails)"]
+        Razorpay["Razorpay Gateway<br/>(Payment Processing SDK)"]
     end
 
-    subgraph DataLayer ["🗄️ Database & Storage Layer (MongoDB)"]
-        MongooseODM["Mongoose Models"]
-        DB_Users["User Collection<br/>(Auth, Credits, Keys)"]
-        DB_Images["Image History Collection<br/>(CDN Urls, Creation Dates)"]
-        DB_Usage["Usage Track Collection<br/>(Daily Rate Limits)"]
+    subgraph PersistenceLayer ["Persistence Storage Layer (NoSQL)"]
+        Mongoose["Mongoose ODM<br/>(Schema Mapping)"]
+        MongoDB[("MongoDB Database<br/>(User, Image, Usage, Transaction)")]
     end
 
-    %% Connection Flows
-    LandingPage --> PricingPage
-    Dashboard --> |Upload Image| UploadHandler
-    PricingPage --> |Initiate Payment| RazorpaySDK
-    DevPortal --> |Generate Keys| ApiKeyMiddleware
+    %% Client Layer internal relationships
+    SPA --> Routing
+    SPA --> State
+    SPA --> CompareUI
 
-    UploadHandler --> AuthMiddleware
-    AuthMiddleware --> APIRouter
-    ApiKeyMiddleware --> APIRouter
+    %% Client-to-Server interactions
+    CompareUI --> |"HTTP Multipart Form-Data"| Multer
+    SPA --> |"HTTP Header Bearer JWT"| AuthMiddleware
+    SPA --> |"HTTP Header Bearer API Key"| ApiKeyMiddleware
 
-    APIRouter --> |Upload Raw/Processed Assets| CloudinaryCDN
-    APIRouter --> |Segment Contour Request| ClipdropAI
-    APIRouter --> |Send OTP verification| ResendSMTP
-    RazorpaySDK --> |Deduce Credit Allocations| APIRouter
+    %% Server Core routing
+    Multer --> Server
+    AuthMiddleware --> Server
+    ApiKeyMiddleware --> Server
+    CORS --> Server
 
-    APIRouter --> MongooseODM
-    MongooseODM --> DB_Users
-    MongooseODM --> DB_Images
-    MongooseODM --> DB_Usage
+    %% Server-to-External Services connections
+    Server --> |"Post Raw Buffer (Clipdrop Key)"| Clipdrop
+    Server --> |"Upload base64 Image"| Cloudinary
+    Server --> |"Send OTP JSON payload"| Resend
+    Server --> |"Initiate Order / Capture Payment"| Razorpay
 
-    %% Visual Styling Classes
-    classDef clientStyle fill:#1e1b4b,stroke:#4338ca,stroke-width:2px,color:#e0e7ff;
-    classDef serverStyle fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
-    classDef serviceStyle fill:#022c22,stroke:#10b981,stroke-width:2px,color:#ecfdf5;
-    classDef dbStyle fill:#172554,stroke:#2563eb,stroke-width:2px,color:#eff6ff;
+    %% Server-to-Database persistence
+    Server --> Mongoose
+    Mongoose --> MongoDB
 
-    class LandingPage,Dashboard,DevPortal,PricingPage clientStyle;
-    class APIRouter,AuthMiddleware,ApiKeyMiddleware,UploadHandler serverStyle;
-    class ClipdropAI,CloudinaryCDN,ResendSMTP,RazorpaySDK serviceStyle;
-    class MongooseODM,DB_Users,DB_Images,DB_Usage dbStyle;
+    %% CSS Styles for High-Quality Visual Mapping
+    classDef clientClass fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
+    classDef gatewayClass fill:#022c22,stroke:#059669,stroke-width:2px,color:#ecfdf5;
+    classDef serviceClass fill:#311042,stroke:#a21caf,stroke-width:2px,color:#fae8ff;
+    classDef dbClass fill:#1c1917,stroke:#78716c,stroke-width:2px,color:#f5f5f4;
+
+    class SPA,Routing,State,CompareUI clientClass;
+    class Server,CORS,Multer,AuthMiddleware,ApiKeyMiddleware gatewayClass;
+    class Clipdrop,Cloudinary,Resend,Razorpay serviceClass;
+    class Mongoose,MongoDB dbClass;
+```
+
+---
+
+### 🔄 Background Removal Transaction Lifecycle
+Here is the sequence of events showing how a background removal request is parsed, authenticated, verified against credit quotas, sent to the ML segmentation engine, and persisted:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Developer as Developer / User Client
+    participant API as API Gateway (routes.js)
+    participant Auth as Auth Middleware
+    participant Cloudinary as Cloudinary CDN
+    participant Clipdrop as Clipdrop AI Service
+    participant DB as MongoDB (Mongoose)
+
+    Developer->>API: POST /api/images/process (with Image file + Auth header)
+    activate API
+    API->>Auth: Verify JWT / API Key (`requireAuth` or `requireApiKey`)
+    activate Auth
+    alt Token Invalid
+        Auth-->>Developer: Return 401 Unauthorized
+    else Token Valid
+        Auth-->>API: Return User Session Metadata (Plan, Credits)
+    end
+    deactivate Auth
+
+    API->>DB: Check credit quota
+    activate DB
+    DB-->>API: User plan = "Free" (processedToday < 5) OR Pro (credits > 0)
+    deactivate DB
+
+    alt Quota Exhausted
+        API-->>Developer: Return 400 Bad Request (Limit Reached)
+    end
+
+    %% Cloudinary Original Upload
+    API->>Cloudinary: Upload original image (Base64 original buffer)
+    activate Cloudinary
+    Cloudinary-->>API: Return secure_url (Original Image URL)
+    deactivate Cloudinary
+
+    %% Background Removal Request
+    API->>Clipdrop: Forward original buffer to remove-background API (multipart)
+    activate Clipdrop
+    Clipdrop-->>API: Return isolated PNG buffer (binary stream)
+    deactivate Clipdrop
+
+    %% Cloudinary Processed Upload
+    API->>Cloudinary: Upload processed buffer (Base64 processed)
+    activate Cloudinary
+    Cloudinary-->>API: Return secure_url (Processed Image URL)
+    deactivate Cloudinary
+
+    %% Database updates
+    API->>DB: Deduct 1 credit OR increment processedToday counter
+    activate DB
+    DB-->>API: Confirmation (Save metadata to Image history)
+    deactivate DB
+
+    API-->>Developer: Return processed URL & remaining credits (JSON / File stream)
+    deactivate API
 ```
 
 ---
