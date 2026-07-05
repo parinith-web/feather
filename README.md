@@ -1,104 +1,128 @@
-# SnapCut / Feather — AI Background Remover
+# Feather
 
-Full-stack app: React (Vite) frontend + Node/Express backend, wired together.
+AI-powered background remover with history, plans, and one-time Pro upgrades
 
-- **Frontend** (`/frontend`): Firebase Google sign-in, upload UI, background
-  picker, format export, history gallery, profile/plan page. Deploys to **Vercel**.
-- **Backend** (`/backend`): verifies Firebase ID tokens, stores users/usage in
-  **MongoDB**, calls **ClipDrop** for the actual AI background removal, stores
-  processed images in **Cloudinary**, and handles **Paddle** payments for a
-  one-time "Pro" upgrade. Deploys to **Render**.
+React (Vite) · Express · MongoDB
 
-The two are already wired to each other (see `backend/README.md` §5 and
-`frontend/README.md` §3 for exactly which files do what). All that's left is
-filling in real API keys and deploying — no code changes required.
+Feather lets users upload an image, remove the background with one click, pick a new background, export in their format of choice, and revisit past edits from a history gallery. A one-time payment unlocks Pro features.
 
-## Quick start (local dev)
+## Features
+
+**Background Removal**
+- One-Click Removal — AI-powered background removal via ClipDrop
+- Background Picker — Swap in solid colors or custom backgrounds
+- Format Export — Download processed images in your chosen format
+- History Gallery — Revisit and re-download past edits
+
+**Account & Auth**
+- Google Sign-In — Auth handled via Firebase
+- Profile & Plan — View account details and current plan
+- Usage Tracking — Track remaining free-tier usage
+
+**Payments**
+- Pro Upgrade — One-time paid upgrade via Paddle
+- Webhook-Driven — Plan status updates automatically on successful payment
+
+## Tech Stack
+
+**Frontend**
+| Technology | Purpose |
+|---|---|
+| React 19 | UI library |
+| Vite | Build tool & dev server |
+| React Router | Client-side routing |
+| Tailwind CSS | Styling |
+| Framer Motion | Animations |
+| Firebase (client) | Google sign-in |
+| Axios | API requests |
+
+**Backend**
+| Technology | Purpose |
+|---|---|
+| Express | REST API |
+| MongoDB (Mongoose) | User & history storage |
+| Firebase Admin | ID token verification |
+| Cloudinary | Processed image storage |
+| ClipDrop API | AI background removal |
+| Paddle | Payments & webhooks |
+
+## Project Structure
+
+```
+feather/
+├── frontend/               # React (Vite) app
+│   └── src/
+│       ├── Pages/          # Dashboard, Home, History, Profile, RemoveBackground
+│       ├── api/            # API client + endpoint wrappers
+│       ├── utils/          # bgRemoval, paddle helpers
+│       └── firebase.jsx    # Firebase client config
+└── backend/                # Express API
+    └── src/
+        ├── controllers/    # auth, bg, history, payment, user
+        ├── routes/         # Route definitions
+        ├── services/       # clipdrop, cloudinary, paddle, usage
+        ├── models/         # User, HistoryItem (Mongoose)
+        ├── middleware/      # Firebase token verification, upload, errors
+        └── config/         # db, firebase, cloudinary setup
+```
+
+## Architecture
+
+```
+User → Firebase Auth → Backend verifies ID token → MongoDB (user/usage)
+                                    ↓
+                          Upload image → ClipDrop (remove bg)
+                                    ↓
+                          Cloudinary (store result) → History
+                                    ↓
+                          Paddle checkout → Webhook → Pro plan unlocked
+```
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+
+- A Firebase project (Google sign-in enabled)
+- A MongoDB Atlas cluster
+- A ClipDrop API key
+- A Cloudinary account
+- A Paddle account (sandbox is fine for local dev)
+
+### Installation
 
 ```bash
-# Terminal 1 — backend
+# Backend
 cd backend
 npm install
-cp .env.example .env   # fill in real values, see below
+cp .env.example .env   # fill in Firebase, MongoDB, ClipDrop, Cloudinary, Paddle keys
 npm run dev             # http://localhost:5000
 
-# Terminal 2 — frontend
+# Frontend (new terminal)
 cd frontend
 npm install
-cp .env.example .env    # VITE_API_URL=http://localhost:5000 + Firebase config
+cp .env.example .env    # VITE_API_URL + Firebase config
 npm run dev              # http://localhost:5173
 ```
 
-## What you need to fill in, and where to get it
+## Available Scripts
 
-### 1. Firebase (auth)
-1. Go to the [Firebase Console](https://console.firebase.google.com/) → Create a project.
-2. **Authentication → Sign-in method** → enable **Google**.
-3. **Project Settings → General → Your apps** → add a Web app → copy the
-   config object into `frontend/.env` (`VITE_FIREBASE_*`).
-4. **Project Settings → Service accounts** → **Generate new private key** →
-   downloads a JSON file. Copy `project_id`, `client_email`, and
-   `private_key` into `backend/.env` (`FIREBASE_PROJECT_ID`,
-   `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` — keep the `\n` escapes in
-   the private key as a single-line value).
+**Backend**
+| Command | Description |
+|---|---|
+| `npm run dev` | Start dev server with auto-restart |
+| `npm start` | Start production server |
 
-### 2. MongoDB (user + history records)
-1. Create a free cluster at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register).
-2. **Database Access** → add a database user + password.
-3. **Network Access** → allow `0.0.0.0/0` (or Render's IPs) so Render can connect.
-4. **Connect → Drivers** → copy the connection string into `backend/.env` as
-   `MONGODB_URI` (fill in your username/password/db name, e.g. `.../snapcut?...`).
+**Frontend**
+| Command | Description |
+|---|---|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview production build |
+| `npm run lint` | Run ESLint |
 
-### 3. ClipDrop (AI background removal)
-1. Sign up at [clipdrop.co/apis](https://clipdrop.co/apis).
-2. Grab an API key for the **Remove Background** API.
-3. Put it in `backend/.env` as `CLIPDROP_API_KEY`.
+## Deployment
 
-### 4. Cloudinary (processed-image storage for History)
-1. Sign up at [cloudinary.com](https://cloudinary.com/) (free tier is enough).
-2. **Dashboard** → copy **Cloud name**, **API Key**, **API Secret** into
-   `backend/.env` (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`,
-   `CLOUDINARY_API_SECRET`).
+- **Backend** → Render (root: `backend`, build: `npm install`, start: `npm start`)
+- **Frontend** → Vercel (root: `frontend`, framework: Vite, auto-detected)
 
-### 5. Paddle (demo/sandbox payments for the $19 "Pro" upgrade)
-1. Sign up at [paddle.com](https://www.paddle.com/) and switch to **Sandbox** mode.
-2. **Developer Tools → Authentication** → create an API key → `PADDLE_API_KEY`.
-3. **Developer Tools → Client-side tokens** → create one → `PADDLE_CLIENT_TOKEN`.
-4. **Catalog → Products** → create a one-time "Pro" product/price → copy the
-   price id (`pri_...`) → `PADDLE_PRO_PRICE_ID`.
-5. **Developer Tools → Notifications** → create a webhook destination
-   pointing at `https://<your-render-service>.onrender.com/api/payments/webhook`,
-   subscribed to at least `transaction.completed` and `adjustment.created` →
-   copy the signing secret → `PADDLE_WEBHOOK_SECRET`.
-6. Leave `PADDLE_ENV=sandbox` for demo purposes (switch to `production` with
-   live keys when you're ready to charge real cards).
-
-## Deploying
-
-### Backend → Render
-See `backend/README.md` §6 for the full step-by-step. Short version: new Web
-Service, root directory `backend`, build `npm install`, start `npm start`,
-paste in every var from `backend/.env.example` with real values, set
-`CLIENT_ORIGINS` to your Vercel URL once you have it.
-
-### Frontend → Vercel
-See `frontend/README.md` §4. Short version: new Project, root directory
-`frontend`, framework Vite (auto-detected), paste in every `VITE_*` var from
-`frontend/.env.example`, using the Render URL for `VITE_API_URL`.
-
-### Wiring the two together after both are deployed
-1. Copy the Render backend URL → set as `VITE_API_URL` in Vercel's env vars → redeploy frontend.
-2. Copy the Vercel frontend URL → add to `CLIENT_ORIGINS` in Render's env vars → redeploy backend.
-3. Add the Vercel URL to Firebase Console → Authentication → Settings →
-   Authorized domains (otherwise Google sign-in will fail on the live site).
-4. Point the Paddle sandbox webhook at the Render URL's `/api/payments/webhook`.
-
-Once all four of those cross-references are set, sign-in, background removal,
-history, and the Pro upgrade should all work end-to-end on the live URLs.
-
-## Project structure
-
-```
-backend/     Express API — see backend/README.md
-frontend/    React (Vite) app — see frontend/README.md
-```
+After deploying both, set `VITE_API_URL` (frontend) to the Render URL, add the Vercel URL to `CLIENT_ORIGINS` (backend) and to Firebase's authorized domains, and point the Paddle webhook at `<render-url>/api/payments/webhook`.
