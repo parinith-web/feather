@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+html {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+    background-color: #F3F4F6;
+}
+
+html::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge (Chromium) */
+    width: 0;
+    height: 0;
+}
+
+body {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    background-color: #F3F4F6;
+}
+
+body::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+@keyframes progress-loading {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+.animate-progress {
+    animation: progress-loading 2s infinite linear;
+}
+
+@font-face {
+    font-family: BriceReg;
+    src: url("/src/assets/fonts/brice-regular.ttf") format("truetype");
+    font-weight: 400;
+}
+
+@font-face {
+    font-family: Brice;
+    src: url("/src/assets/fonts/Brice-BoldSemiExpanded.ttf") format("truetype");
+    font-weight: 700;
+}
+
+@theme {
+    --font-bricereg: BriceReg, "sans-serif";
+}
+
+@theme {
+    --font-brice: Brice, "sans-serif";
+}
+
+.bg-aesthetic-dots {
+    position: relative;
+    background-color: #fafafa;
+}
+
+.bg-checkerboard {
+    background-image: repeating-conic-gradient(#e5e7eb 0% 25%, white 0% 50%);
+    background-size: 20px 20px;
+}
+
+.bg-aesthetic-dots::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image: radial-gradient(#2F5FA8 0.5px, transparent 0.5px);
+    background-size: 24px 24px;
+    -webkit-mask-image: linear-gradient(
+        to right,
+        black,
+        transparent 25%,
+        transparent 75%,
+        black
+    );
+    mask-image: linear-gradient(
+        to right,
+        black,
+        transparent 25%,
+        transparent 75%,
+        black
+    );
+    pointer-events: none;
+}

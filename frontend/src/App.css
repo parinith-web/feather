@@ -1,0 +1,68 @@
+.react-datepicker__header {
+    background-color: #2F5FA8 !important;
+    color: white !important;
+    border-bottom: none !important;
+    font-family: "Manrope", serif;
+}
+.react-datepicker__current-month,
+.react-datepicker__current-month--hasYearDropdown,
+.react-datepicker__current-month--hasMonthYearDropdown {
+    color: white !important;
+    font-weight: 600 !important;
+    font-family: "Manrope", serif;
+}
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+    background-color: #2F5FA8 !important;
+    color: #fff !important;
+    font-family: "Manrope", serif;
+}
+.react-datepicker__day--in-selecting-range {
+    background-color: #4F6D9D !important;
+    font-family: "Manrope", serif;
+    color: white !important;
+}
+
+.react-datepicker__day--in-selecting-range:hover {
+    font-family: "Manrope", serif;
+    background-color: #4F6D9D !important;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.Toastify__toast {
+    border-radius: 10px !important;
+    padding: 12px 16px !important;
+    font-size: 0.9rem !important;
+    font-family: "Manrope";
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08) !important;
+    backdrop-filter: blur(4px);
+}
+
+.Toastify__toast--success {
+    background: #ecfdf5 !important;
+    color: #065f46 !important;
+}
+
+.Toastify__toast--error {
+    background: #fef2f2 !important;
+    color: #991b1b !important;
+}
+
+.Toastify__toast--info {
+    background: #eff6ff !important;
+    color: #1e3a8a !important;
+}
+
+.Toastify__slide-exit {
+    animation-duration: 0.6s !important;
+}
+
+html,
+body {
+    overscroll-behavior: none;
+}

@@ -1,332 +1,104 @@
-# <p align="center"><img src="Frame 1 (2).png" alt="PurePixels - AI Background Removal" width="10%" /></p>
+# SnapCut / Feather — AI Background Remover
 
-<p align="center">
-  <a href="#features"><b>Features</b></a> |
-  <a href="#screenshot-gallery"><b>Gallery</b></a> |
-  <a href="#system-architecture"><b>Architecture</b></a> |
-  <a href="#tech-stack"><b>Tech Stack</b></a> |
-  <a href="#getting-started"><b>Local Setup</b></a> |
-  <a href="#developer-api"><b>API Docs</b></a>
-</p>
+Full-stack app: React (Vite) frontend + Node/Express backend, wired together.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
-  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
-  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind" />
-  <br />
-  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node" />
-  <img src="https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
-  <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
-  <img src="https://img.shields.io/badge/Cloudinary-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white" alt="Cloudinary" />
-</p>
+- **Frontend** (`/frontend`): Firebase Google sign-in, upload UI, background
+  picker, format export, history gallery, profile/plan page. Deploys to **Vercel**.
+- **Backend** (`/backend`): verifies Firebase ID tokens, stores users/usage in
+  **MongoDB**, calls **ClipDrop** for the actual AI background removal, stores
+  processed images in **Cloudinary**, and handles **Paddle** payments for a
+  one-time "Pro" upgrade. Deploys to **Render**.
 
----
+The two are already wired to each other (see `backend/README.md` §5 and
+`frontend/README.md` §3 for exactly which files do what). All that's left is
+filling in real API keys and deploying — no code changes required.
 
-## 📸 Introduction
+## Quick start (local dev)
 
-**PurePixels** is a state-of-the-art, production-ready **AI Background Removal Platform** built on a robust full-stack architecture. By combining a beautiful, interactive, and fluid frontend with a high-performance, secure backend, PurePixels makes background removal seamless for both everyday users and professional developers.
-
-Integrated with top-tier cloud services, payment gateways, and advanced machine learning models (powered by Clipdrop's background segmentation engine), it functions both as a SaaS application with tiered subscription models and as a developer-first programmatic background removal utility.
-
----
-
-## ✨ Features
-
-- ⚡ **AI-Powered Background Removal**: Superb contour and foreground edge segmentation using state-of-the-art image segmentation models.
-- 🎨 **Visual Image Comparison**: A beautiful, custom-designed interactive before/after split slider to review segmentation details.
-- 🔐 **Premium Authentication & OTP Verification**: Bulletproof JWT authentication accompanied by high-security transactional OTP verification emails powered by **Resend**.
-- 💳 **Razorpay Payment Integration**: Fully functional billing system for purchasing background processing credits with support for secure checkout packages (Monthly & Yearly).
-- 🛠️ **Developer Portal & REST API**: Allows developers to generate, rotate, and manage secure API keys (`pp_sk_...`) and call the programmatic `/v1/remove-background` endpoint to stream processed image buffers back.
-- 📁 **Cloudinary Hosted Assets**: Highly optimized, distributed cloud storage for user-history images, allowing permanent retrieval and automatic cleanup.
-- 📊 **User History & Usage Logs**: Track daily usage, credit consumption, historical processed images, download files, and manage account properties.
-- 🎨 **Rich Aesthetics & UI**: Completely designed with cohesive dark modes, beautiful glassmorphism gradients, polished micro-animations, and dynamic visual transitions.
-
----
-
-## 🖼️ Screenshot Gallery
-
-Here is a visual tour of the PurePixels application interface, showcasing its sleek dark aesthetics and user flows:
-
-### 1. The Landing Page & Core Interface
-Discover a premium, interactive homepage with step-by-step guides, features grid, pricing previews, and a dynamic interactive section.
-
-<p align="center">
-  <img src="Screenshot 2026-05-31 013657.png" alt="Interactive API Documentation" width="49%" />
-  <img src="Screenshot 2026-05-31 013044.png" alt="PurePixels Homepage Hero" width="49%" />
-</p>
-
----
-
-### 2. Login verification & Interactive Comparison Slider
-Upload any PNG/JPEG image (up to 10MB) and watch as the background removal engine isolates the subject. Slide between the original and the processed image to check edge precision.
-
-<p align="center">
-  <img src="Screenshot 2026-05-31 013059.png" alt="PurePixels Features & How It Works" width="49%" />
-  <img src="Screenshot 2026-05-31 013517.png" alt="PurePixels AI Image Processor" width="49%" />
-
-</p>
-
----
-
-### 3. High-Performance Dashboard  & Payment Gateway
-PurePixels empowers developers by offering custom integration scripts, structured REST requests, and instant API Key rotation.
-
-<p align="center">
-  <img src="Screenshot 2026-05-31 013620.png" alt="Interactive Before/After Slider" width="49%" />
-  <img src="Screenshot 2026-05-31 014028.png" alt="Developer Keys & Settings" width="49%" />
-</p>
-
----
-
-## ⚙️ System Architecture
-
-PurePixels is architected around a decoupled **Stateless Client-API pattern** configured to process intensive machine learning operations asynchronously while managing transactional state safely.
-
-### 🏛️ Layered Component Blueprint
-The block diagram below maps the boundary interactions of client interfaces, REST controllers, Mongoose schemas, and third-party integrations:
-
-```mermaid
-graph TB
-    %% Subgraphs representing different architectural bounds
-    subgraph ClientSub ["Client Layer (React Single Page App)"]
-        SPA["React 18 Single Page App<br/>(Vite / TypeScript)"]
-        Routing["React Router DOM v6<br/>(Protected Dash & Auth Routes)"]
-        State["TanStack Query (React Query)<br/>(Server State caching)"]
-        CompareUI["Interactive UI Slider<br/>(Contrast Comparison)"]
-    end
-
-    subgraph APIGateway ["API Gateway Layer (Express.js Server)"]
-        Server["Node.js HTTP Server<br/>(Express Core)"]
-        CORS["CORS Policy Middleware<br/>(Origin Verification)"]
-        Multer["Multer File Uploader<br/>(In-Memory Buffer Parsing)"]
-        AuthMiddleware["JWT Validation Middleware<br/>(requireAuth)"]
-        ApiKeyMiddleware["API Key Validation Middleware<br/>(requireApiKey)"]
-    end
-
-    subgraph ServiceIntegrations ["Third-Party Service Engine"]
-        Clipdrop["Clipdrop API<br/>(Background Segmentation AI)"]
-        Cloudinary["Cloudinary CDN<br/>(Image Asset Hosting)"]
-        Resend["Resend SMTP API<br/>(Transactional OTP Emails)"]
-        Razorpay["Razorpay Gateway<br/>(Payment Processing SDK)"]
-    end
-
-    subgraph PersistenceLayer ["Persistence Storage Layer (NoSQL)"]
-        Mongoose["Mongoose ODM<br/>(Schema Mapping)"]
-        MongoDB[("MongoDB Database<br/>(User, Image, Usage, Transaction)")]
-    end
-
-    %% Client Layer internal relationships
-    SPA --> Routing
-    SPA --> State
-    SPA --> CompareUI
-
-    %% Client-to-Server interactions
-    CompareUI --> |"HTTP Multipart Form-Data"| Multer
-    SPA --> |"HTTP Header Bearer JWT"| AuthMiddleware
-    SPA --> |"HTTP Header Bearer API Key"| ApiKeyMiddleware
-
-    %% Server Core routing
-    Multer --> Server
-    AuthMiddleware --> Server
-    ApiKeyMiddleware --> Server
-    CORS --> Server
-
-    %% Server-to-External Services connections
-    Server --> |"Post Raw Buffer (Clipdrop Key)"| Clipdrop
-    Server --> |"Upload base64 Image"| Cloudinary
-    Server --> |"Send OTP JSON payload"| Resend
-    Server --> |"Initiate Order / Capture Payment"| Razorpay
-
-    %% Server-to-Database persistence
-    Server --> Mongoose
-    Mongoose --> MongoDB
-
-    %% CSS Styles for High-Quality Visual Mapping
-    classDef clientClass fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
-    classDef gatewayClass fill:#022c22,stroke:#059669,stroke-width:2px,color:#ecfdf5;
-    classDef serviceClass fill:#311042,stroke:#a21caf,stroke-width:2px,color:#fae8ff;
-    classDef dbClass fill:#1c1917,stroke:#78716c,stroke-width:2px,color:#f5f5f4;
-
-    class SPA,Routing,State,CompareUI clientClass;
-    class Server,CORS,Multer,AuthMiddleware,ApiKeyMiddleware gatewayClass;
-    class Clipdrop,Cloudinary,Resend,Razorpay serviceClass;
-    class Mongoose,MongoDB dbClass;
-
-```
----
-
-## 🛠️ Tech Stack
-
-### Frontend Client
-- **Framework**: [React 18](https://react.dev/) + [Vite](https://vitejs.dev/) + [TypeScript](https://www.typescriptlang.org/)
-- **Styling & UI**: [Tailwind CSS](https://tailwindcss.com/) + [Shadcn UI](https://ui.shadcn.com/) (Radix Primitives)
-- **Animation**: [Framer Motion](https://www.framer.com/motion/) for premium transition effects
-- **State & Data Fetching**: [TanStack Query v5 (React Query)](https://tanstack.com/query/latest) + [React Router DOM v6](https://reactrouter.com/)
-- **Charts & Indicators**: [Recharts](https://recharts.org/) for modern usage analytics graphs
-- **Validation**: [Zod](https://zod.dev/) + [React Hook Form](https://react-hook-form.com/)
-
-### Backend Server
-- **Runtime & Framework**: [Node.js](https://nodejs.org/) (ES Modules) + [Express](https://expressjs.com/)
-- **Database**: [MongoDB](https://www.mongodb.com/) via [Mongoose ODM](https://mongoosejs.com/)
-- **Cloud Media Hosting**: [Cloudinary](https://cloudinary.com/) (Dynamic file upload/management)
-- **Transaction Processing**: [Razorpay API](https://razorpay.com/) (Secure orders, billing pipelines)
-- **Email Delivery Service**: [Resend API](https://resend.com/) (Transactional sign-up validation OTPs)
-- **Authentication**: JWT (JSON Web Tokens) with cryptographically secure signatures + [bcryptjs](https://github.com/dcodeIO/bcrypt.js)
-- **Segmentation Provider**: [Clipdrop API](https://clipdrop.co/) (Standard background removal models)
-
----
-
-## 🚀 Getting Started
-
-### 1. Prerequisites
-Ensure you have the following installed on your local environment:
-- [Node.js](https://nodejs.org/) (v18.0.0 or higher)
-- [MongoDB](https://www.mongodb.com/try/download/community) running locally or a MongoDB Atlas URI
-
----
-
-### 2. Environment Variables Configuration
-
-#### Backend Setup (`/server/.env`)
-Create a `.env` file in the `server` directory and fill in the required keys:
-```env
-PORT=5001
-NODE_ENV=development
-CORS_ORIGINS=http://localhost:5173,http://localhost:8080
-
-# Database & Token Security
-MONGODB_URI=mongodb://127.0.0.1:27017/purepixels
-JWT_SECRET=your_long_cryptographically_secure_random_string
-
-# Core Segmentation API (Clipdrop API Key)
-# Note: If left empty in development, the system runs in a local mock processing mode
-CLIPDROP_API_KEY=your_clipdrop_api_key_here
-
-# Cloudinary Integration (For remote permanent history storage)
-CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
-CLOUDINARY_API_KEY=your_cloudinary_api_key
-CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-
-# Razorpay Integration (For credit billing/subscriptions)
-# Note: Set ALLOW_MOCK_PAYMENTS=true to bypass Razorpay transactions in dev mode
-ALLOW_MOCK_PAYMENTS=true
-RAZORPAY_KEY_ID=your_razorpay_key_id
-RAZORPAY_KEY_SECRET=your_razorpay_key_secret
-
-# Resend Mailer Integration (For signup OTP verification)
-# Note: If left empty in development, OTPs will print to your terminal logs for testing!
-RESEND_API_KEY=your_resend_api_key
-EMAIL_FROM=PurePixels <onboarding@yourdomain.com>
-```
-
-#### Frontend Setup (`/client/.env`)
-Create a `.env` file in the `client` directory:
-```env
-VITE_API_BASE_URL=http://localhost:5001/api
-```
-
----
-
-### 3. Installation & Run Commands
-
-You can run the frontend and backend concurrently or in separate terminals.
-
-#### To run the Backend Server:
 ```bash
-cd server
+# Terminal 1 — backend
+cd backend
 npm install
-npm run dev
-```
+cp .env.example .env   # fill in real values, see below
+npm run dev             # http://localhost:5000
 
-#### To run the Frontend Client:
-```bash
-cd client
+# Terminal 2 — frontend
+cd frontend
 npm install
-npm run dev
-```
-Open your browser and navigate to `http://localhost:8180` or the Vite dev URL provided in the terminal to view the application.
-
----
-
-## 🛠️ Developer API
-
-PurePixels offers a high-performance programmatic API designed for developer integrations. Generate an API Key under the **Profile/API** section in your dashboard to start issuing requests.
-
-### Authentication
-All requests must pass your API Key in the standard HTTP header:
-```http
-Authorization: Bearer pp_sk_your_secret_key_here
+cp .env.example .env    # VITE_API_URL=http://localhost:5000 + Firebase config
+npm run dev              # http://localhost:5173
 ```
 
-### Background Removal Endpoint
-Remove backgrounds programmatically by sending any image file via standard multipart-form headers. The response returns the processed binary data directly as an image buffer stream.
+## What you need to fill in, and where to get it
 
-`POST /api/v1/remove-background`
+### 1. Firebase (auth)
+1. Go to the [Firebase Console](https://console.firebase.google.com/) → Create a project.
+2. **Authentication → Sign-in method** → enable **Google**.
+3. **Project Settings → General → Your apps** → add a Web app → copy the
+   config object into `frontend/.env` (`VITE_FIREBASE_*`).
+4. **Project Settings → Service accounts** → **Generate new private key** →
+   downloads a JSON file. Copy `project_id`, `client_email`, and
+   `private_key` into `backend/.env` (`FIREBASE_PROJECT_ID`,
+   `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` — keep the `\n` escapes in
+   the private key as a single-line value).
 
-#### Parameter Schema
-| Name | Type | Position | Required | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `image` | binary | Form Data | Yes | The file upload containing your JPEG or PNG image (max 10MB). |
+### 2. MongoDB (user + history records)
+1. Create a free cluster at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register).
+2. **Database Access** → add a database user + password.
+3. **Network Access** → allow `0.0.0.0/0` (or Render's IPs) so Render can connect.
+4. **Connect → Drivers** → copy the connection string into `backend/.env` as
+   `MONGODB_URI` (fill in your username/password/db name, e.g. `.../snapcut?...`).
 
-#### Request Examples
+### 3. ClipDrop (AI background removal)
+1. Sign up at [clipdrop.co/apis](https://clipdrop.co/apis).
+2. Grab an API key for the **Remove Background** API.
+3. Put it in `backend/.env` as `CLIPDROP_API_KEY`.
 
-##### Curl Request
-```bash
-curl -X POST http://localhost:5001/api/v1/remove-background \
-  -H "Authorization: Bearer pp_sk_YOUR_API_KEY" \
-  -F "image=@/path/to/my_photo.jpg" \
-  --output clean_image.png
+### 4. Cloudinary (processed-image storage for History)
+1. Sign up at [cloudinary.com](https://cloudinary.com/) (free tier is enough).
+2. **Dashboard** → copy **Cloud name**, **API Key**, **API Secret** into
+   `backend/.env` (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`,
+   `CLOUDINARY_API_SECRET`).
+
+### 5. Paddle (demo/sandbox payments for the $19 "Pro" upgrade)
+1. Sign up at [paddle.com](https://www.paddle.com/) and switch to **Sandbox** mode.
+2. **Developer Tools → Authentication** → create an API key → `PADDLE_API_KEY`.
+3. **Developer Tools → Client-side tokens** → create one → `PADDLE_CLIENT_TOKEN`.
+4. **Catalog → Products** → create a one-time "Pro" product/price → copy the
+   price id (`pri_...`) → `PADDLE_PRO_PRICE_ID`.
+5. **Developer Tools → Notifications** → create a webhook destination
+   pointing at `https://<your-render-service>.onrender.com/api/payments/webhook`,
+   subscribed to at least `transaction.completed` and `adjustment.created` →
+   copy the signing secret → `PADDLE_WEBHOOK_SECRET`.
+6. Leave `PADDLE_ENV=sandbox` for demo purposes (switch to `production` with
+   live keys when you're ready to charge real cards).
+
+## Deploying
+
+### Backend → Render
+See `backend/README.md` §6 for the full step-by-step. Short version: new Web
+Service, root directory `backend`, build `npm install`, start `npm start`,
+paste in every var from `backend/.env.example` with real values, set
+`CLIENT_ORIGINS` to your Vercel URL once you have it.
+
+### Frontend → Vercel
+See `frontend/README.md` §4. Short version: new Project, root directory
+`frontend`, framework Vite (auto-detected), paste in every `VITE_*` var from
+`frontend/.env.example`, using the Render URL for `VITE_API_URL`.
+
+### Wiring the two together after both are deployed
+1. Copy the Render backend URL → set as `VITE_API_URL` in Vercel's env vars → redeploy frontend.
+2. Copy the Vercel frontend URL → add to `CLIENT_ORIGINS` in Render's env vars → redeploy backend.
+3. Add the Vercel URL to Firebase Console → Authentication → Settings →
+   Authorized domains (otherwise Google sign-in will fail on the live site).
+4. Point the Paddle sandbox webhook at the Render URL's `/api/payments/webhook`.
+
+Once all four of those cross-references are set, sign-in, background removal,
+history, and the Pro upgrade should all work end-to-end on the live URLs.
+
+## Project structure
+
 ```
-
-##### Node.js / Axios Request
-```javascript
-import axios from 'axios';
-import fs from 'fs';
-import FormData from 'form-data';
-
-const removeBackground = async () => {
-  const form = new FormData();
-  form.append('image', fs.createReadStream('./photo.jpg'));
-
-  try {
-    const response = await axios.post('http://localhost:5001/api/v1/remove-background', form, {
-      headers: {
-        ...form.getHeaders(),
-        'Authorization': 'Bearer pp_sk_YOUR_API_KEY',
-      },
-      responseType: 'arraybuffer', // Streaming raw binary PNG
-    });
-
-    fs.writeFileSync('./no-bg.png', response.data);
-    console.log('Background successfully isolated!');
-  } catch (error) {
-    console.error('API Error:', error.response?.data || error.message);
-  }
-};
-
-removeBackground();
+backend/     Express API — see backend/README.md
+frontend/    React (Vite) app — see frontend/README.md
 ```
-
----
-
-## 📁 Repository Structure
-
-```text
-purepixels/
-├── client/                 # React SPA built with Vite & TypeScript
-│   ├── src/
-│   │   ├── components/     # UI elements & layout blocks (Shadcn + Landing components)
-│   │   ├── pages/          # Index, Dashboard, ApiDocs, Pricing, Profile, Auth Pages
-│   │   └── index.css       # Core styling & Tailwind imports
-│   ├── package.json
-│   └── vite.config.ts
-├── server/                 # Node.js + Express + Mongoose Backend
-│   ├── server.js           # Server runner & database initialization
-│   ├── routes.js           # REST API endpoints & payment validation routines
-│   ├── models.js           # Database Mongoose Schemas (User, Image, Transaction, Usage)
-│   └── package.json
-├── Frame 1 (2).png         # Banner / Cover Preview
-└── README.md               # Documentation & Setup Reference (this file)
-```
-
