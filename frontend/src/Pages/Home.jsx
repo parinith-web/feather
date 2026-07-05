@@ -299,16 +299,12 @@ const Home = () => {
   };
 
   useEffect(() => {
-    const heading = heroHeadingRef.current;
-    if (!heading) return;
-    // Nav becomes solid once the hero heading scrolls up past the fixed nav bar,
-    // rather than reacting to the "Get Started" button (or any scroll at all).
-    const observer = new IntersectionObserver(
-      ([entry]) => setScrolled(!entry.isIntersecting && entry.boundingClientRect.top < 0),
-      { rootMargin: "-96px 0px 0px 0px", threshold: 0 }
-    );
-    observer.observe(heading);
-    return () => observer.disconnect();
+    // Nav becomes solid once the page has scrolled past a small threshold —
+    // simpler and more reliable than tracking the heading's exact position.
+    const handleScroll = () => setScrolled(window.scrollY > 80);
+    handleScroll(); // set initial state correctly on mount (e.g. after a refresh mid-scroll)
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
@@ -321,7 +317,7 @@ const Home = () => {
       >
         <div className="container max-w-5xl mx-auto px-6 flex justify-between items-center">
           <div className="ml-2 sm:ml-4 md:ml-6">
-            <Logo light={!scrolled} showIcon={false} />
+           <Logo light={!scrolled} showIcon={true} />
           </div>
 
           {!user && !loading ? (
