@@ -11,33 +11,33 @@ import { useAuth } from "./AuthContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+const PageWrapper = ({ children }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -20 }}
+    transition={{ duration: 0.1, ease: "easeInOut" }}
+    className="min-h-screen"
+  >
+    {children}
+  </motion.div>
+);
+
+const PrivateRoute = ({ user, loading, children }) => {
+  if (loading)
+    return (
+      <div className="min-h-screen font-bricereg bg-cover bg-center flex justify-center gap-3 pt-70 h-screen text-xl text-[#2F5FA8]">
+        Loading
+        <div className="w-7 h-7 border-4 border-gray-300 border-t-[#2F5FA8] rounded-full animate-spin"></div>
+      </div>
+    );
+  if (!user) return <Navigate to="/" replace />;
+  return children;
+};
+
 function App() {
   const { user, loading } = useAuth();
   const location = useLocation();
-
-  const PrivateRoute = ({ children }) => {
-    if (loading)
-      return (
-        <div className="min-h-screen font-bricereg bg-cover bg-center flex justify-center gap-3 pt-70 h-screen text-xl text-[#2F5FA8]">
-          Loading
-          <div className="w-7 h-7 border-4 border-gray-300 border-t-[#2F5FA8] rounded-full animate-spin"></div>
-        </div>
-      );
-    if (!user) return <Navigate to="/" replace />;
-    return children;
-  };
-
-  const PageWrapper = ({ children }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.1, ease: "easeInOut" }}
-      className="min-h-screen"
-    >
-      {children}
-    </motion.div>
-  );
 
   return (
     <>
@@ -60,7 +60,7 @@ function App() {
           <Route
             path="/dashboard"
             element={
-              <PrivateRoute>
+              <PrivateRoute user={user} loading={loading}>
                 <PageWrapper>
                   <Dashboard />
                 </PageWrapper>
@@ -70,7 +70,7 @@ function App() {
           <Route
             path="/remove-background"
             element={
-              <PrivateRoute>
+              <PrivateRoute user={user} loading={loading}>
                 <PageWrapper>
                   <RemoveBackground />
                 </PageWrapper>
@@ -80,7 +80,7 @@ function App() {
           <Route
             path="/history"
             element={
-              <PrivateRoute>
+              <PrivateRoute user={user} loading={loading}>
                 <PageWrapper>
                   <History />
                 </PageWrapper>
@@ -90,7 +90,7 @@ function App() {
           <Route
             path="/profile"
             element={
-              <PrivateRoute>
+              <PrivateRoute user={user} loading={loading}>
                 <PageWrapper>
                   <Profile />
                 </PageWrapper>

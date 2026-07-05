@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { syncUser } from "./api/auth";
@@ -54,13 +54,15 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{ user, profile, loading, profileLoading, refreshProfile, setProfile }}
-    >
-      {children}
-    </AuthContext.Provider>
+  // Memoized so consumers of useAuth() only re-render when one of these
+  // values actually changes, instead of getting a brand-new object on every
+  // AuthProvider render (which was cascading re-renders into every consumer).
+  const value = useMemo(
+    () => ({ user, profile, loading, profileLoading, refreshProfile, setProfile }),
+    [user, profile, loading, profileLoading, refreshProfile]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => useContext(AuthContext);
