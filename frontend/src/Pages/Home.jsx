@@ -339,7 +339,7 @@ const Home = () => {
       </nav>
 
       {/* Hero */}
-      <header className="relative w-full min-h-screen flex items-start justify-center overflow-hidden isolate bg-[#0B1E3A] pt-28 sm:pt-32 md:pt-36">
+      <header className="relative w-full min-h-screen flex items-start justify-center overflow-hidden isolate bg-[#0B1E3A] pt-36 sm:pt-40 md:pt-48">
         {/* Full-screen brand background image — real <img> so it stays crisp and correctly scaled at any browser zoom level */}
         <img
           src={HeroSpotlightBg}
