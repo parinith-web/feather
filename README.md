@@ -4,10 +4,10 @@
 
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)  ![Express](https://img.shields.io/badge/Express-4-000000?style=flat-square&logo=express&logoColor=white) ![MongoDB](https://img.shields.io/badge/MongoDB-8-47A248?style=flat-square&logo=mongodb&logoColor=white)
 
+Feather lets users upload an image, remove the background with one click, pick a new background, export in their format of choice, and revisit past edits from a history gallery. A one-time payment unlocks Pro features.
+
 <img width="1900" height="1097" alt="image" src="https://github.com/user-attachments/assets/5cd51692-b0b8-4e5c-931c-9280c1b57c8f" />
 
-
-Feather lets users upload an image, remove the background with one click, pick a new background, export in their format of choice, and revisit past edits from a history gallery. A one-time payment unlocks Pro features.
 
 ## Features
 
